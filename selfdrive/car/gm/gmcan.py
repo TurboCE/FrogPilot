@@ -54,7 +54,7 @@ def create_adas_keepalive(bus):
   return [make_can_msg(0x409, dat, bus), make_can_msg(0x40a, dat, bus)]
 
 
-def create_gas_regen_command(packer, bus, throttle, idx, enabled, at_full_stop):
+def create_gas_regen_command(packer, bus, throttle, idx, enabled, at_full_stop, use_camera_checksum=False):
   values = {
     "GasRegenCmdActive": enabled,
     "RollingCounter": idx,
@@ -70,6 +70,10 @@ def create_gas_regen_command(packer, bus, throttle, idx, enabled, at_full_stop):
   values["GasRegenChecksum"] = (((0xff - dat[1]) & 0xff) << 16) | \
                                (((0xff - dat[2]) & 0xff) << 8) | \
                                ((0x100 - dat[3] - idx) & 0xff)
+
+  if use_camera_checksum:
+    # Preserve carry/borrow across bytes, matching captured Trailblazer camera frames.
+    values["GasRegenChecksum"] = ((-int.from_bytes(dat[1:4], "big") - idx) & 0xffffff)
 
   return packer.make_can_msg("ASCMGasRegenCmd", bus, values)
 
